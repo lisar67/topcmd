@@ -1,0 +1,17 @@
+{
+  "name": "topcmd",
+  "version": "0.1.0",
+  "description": "Find your most-used shell commands from bash or zsh history",
+  "type": "module",
+  "bin": {
+    "topcmd": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "author": "lisar67"
+}

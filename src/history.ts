@@ -75,6 +75,22 @@ function parseBashHistory(content: string): HistoryEntry[] {
   return entries;
 }
 
+// entries with no timestamp (history written without extended/HISTTIMEFORMAT
+// timing) can't be placed in a range, so they're dropped rather than guessed at
+export function filterByTimeRange(
+  entries: HistoryEntry[],
+  since: number | null,
+  until: number | null,
+): HistoryEntry[] {
+  if (since === null && until === null) return entries;
+  return entries.filter((entry) => {
+    if (entry.timestamp === null) return false;
+    if (since !== null && entry.timestamp < since) return false;
+    if (until !== null && entry.timestamp > until) return false;
+    return true;
+  });
+}
+
 // reduces a full command line to the program that was actually invoked:
 // drops leading env assignments (FOO=bar mycommand ...) and any directory
 // prefix, so "/usr/bin/git status" and "git log" both count as "git"

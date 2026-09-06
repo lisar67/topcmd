@@ -18,6 +18,8 @@ of the base command, read straight out of your shell's history file.
 topcmd
 topcmd --shell zsh --limit 10
 topcmd --file ./old_bash_history --json
+topcmd --since 7d
+topcmd --since 2024-01-01 --until 2024-02-01
 ```
 
 Human-readable output:
@@ -57,8 +59,16 @@ $ topcmd --limit 3 --json
 | `--shell <name>` | `bash` or `zsh`; guessed from `$SHELL` if not given                 |
 | `--file <path>`  | history file to read (default `~/.bash_history` or `~/.zsh_history`)|
 | `--limit <n>`    | how many commands to show (default 20)                              |
+| `--since <when>` | only count commands run at or after this time                       |
+| `--until <when>` | only count commands run at or before this time                      |
 | `--json`         | print a JSON object instead of a table                              |
 | `-h`, `--help`   | usage text                                                           |
+
+`<when>` accepts an ISO date/time (`2024-01-01`, `2024-01-01T10:00:00`), a
+raw epoch-seconds number, or a relative duration ago (`30m`, `12h`, `7d`,
+`2w`). History entries with no timestamp are dropped whenever `--since` or
+`--until` is given, since there's no way to know where they'd fall in the
+range.
 
 ## How parsing works
 
@@ -84,5 +94,5 @@ node dist/index.js
 
 ## Status
 
-Early. Timestamps are parsed but not yet used for anything — see the
-roadmap for what's planned.
+Early. Timestamps now drive `--since`/`--until` filtering; excluding noisy
+commands, fish history support, and an hour-of-day view are still planned.

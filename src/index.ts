@@ -11,6 +11,7 @@ interface Options {
   json: boolean;
   since: number | null;
   until: number | null;
+  exclude: Set<string>;
 }
 
 interface RankedCommand {
@@ -40,6 +41,8 @@ Options:
   --limit <n>          how many commands to show (default: 20)
   --since <when>       only count commands run at or after this time
   --until <when>       only count commands run at or before this time
+  --exclude <names>    comma-separated base commands to leave out of the
+                        ranking (repeatable); e.g. --exclude cd,ls
   --json               print results as JSON instead of a table
   -h, --help           show this help text
 
@@ -54,6 +57,7 @@ Examples:
   topcmd --file ./old_bash_history --json
   topcmd --since 7d
   topcmd --since 2024-01-01 --until 2024-02-01
+  topcmd --exclude cd,ls,clear
 `);
 }
 
@@ -86,6 +90,7 @@ function parseArgs(argv: string[]): Options {
     json: false,
     since: null,
     until: null,
+    exclude: new Set(),
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -126,6 +131,15 @@ function parseArgs(argv: string[]): Options {
         options.until = parseTimeArg(value);
         break;
       }
+      case '--exclude': {
+        const value = argv[++i];
+        if (value === undefined) throw new Error('--exclude requires a value');
+        for (const name of value.split(',')) {
+          const trimmed = name.trim();
+          if (trimmed.length > 0) options.exclude.add(trimmed);
+        }
+        break;
+      }
       case '-h':
       case '--help':
         printHelp();
@@ -139,16 +153,26 @@ function parseArgs(argv: string[]): Options {
   return options;
 }
 
-function rankCommands(entries: { command: string }[], limit: number): RankedCommand[] {
+interface RankResult {
+  ranked: RankedCommand[];
+  total: number;
+}
+
+function rankCommands(
+  entries: { command: string }[],
+  limit: number,
+  exclude: Set<string>,
+): RankResult {
   const counts = new Map<string, number>();
+  let total = 0;
   for (const entry of entries) {
     const name = baseCommand(entry.command);
-    if (name.length === 0) continue;
+    if (name.length === 0 || exclude.has(name)) continue;
     counts.set(name, (counts.get(name) ?? 0) + 1);
+    total++;
   }
 
-  const total = entries.length;
-  return [...counts.entries()]
+  const ranked = [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([command, count]) => ({
@@ -156,6 +180,8 @@ function rankCommands(entries: { command: string }[], limit: number): RankedComm
       count,
       percent: total === 0 ? 0 : Math.round((count / total) * 1000) / 10,
     }));
+
+  return { ranked, total };
 }
 
 function printTable(ranked: RankedCommand[], totalEntries: number): void {
@@ -183,7 +209,7 @@ function run(): void {
   const content = readFileSync(file, { encoding: 'utf8' });
   const allEntries = parseHistory(content, options.shell);
   const entries = filterByTimeRange(allEntries, options.since, options.until);
-  const ranked = rankCommands(entries, options.limit);
+  const { ranked, total } = rankCommands(entries, options.limit, options.exclude);
 
   if (options.json) {
     console.log(
@@ -193,7 +219,7 @@ function run(): void {
           file,
           since: options.since,
           until: options.until,
-          total: entries.length,
+          total,
           commands: ranked,
         },
         null,
@@ -201,7 +227,7 @@ function run(): void {
       ),
     );
   } else {
-    printTable(ranked, entries.length);
+    printTable(ranked, total);
   }
 }
 

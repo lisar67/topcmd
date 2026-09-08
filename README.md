@@ -20,6 +20,7 @@ topcmd --shell zsh --limit 10
 topcmd --file ./old_bash_history --json
 topcmd --since 7d
 topcmd --since 2024-01-01 --until 2024-02-01
+topcmd --exclude cd,ls,clear
 ```
 
 Human-readable output:
@@ -61,6 +62,7 @@ $ topcmd --limit 3 --json
 | `--limit <n>`    | how many commands to show (default 20)                              |
 | `--since <when>` | only count commands run at or after this time                       |
 | `--until <when>` | only count commands run at or before this time                      |
+| `--exclude <names>` | comma-separated base commands to leave out of the ranking (repeatable) |
 | `--json`         | print a JSON object instead of a table                              |
 | `-h`, `--help`   | usage text                                                           |
 
@@ -94,5 +96,5 @@ node dist/index.js
 
 ## Status
 
-Early. Timestamps now drive `--since`/`--until` filtering; excluding noisy
-commands, fish history support, and an hour-of-day view are still planned.
+Early. `--exclude` now lets you drop noisy commands from the ranking; fish
+history support and an hour-of-day view are still planned.

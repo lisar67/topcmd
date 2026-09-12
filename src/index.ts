@@ -21,12 +21,22 @@ interface RankedCommand {
 }
 
 function detectShell(): Shell {
-  return (process.env.SHELL ?? '').includes('zsh') ? 'zsh' : 'bash';
+  const shellPath = process.env.SHELL ?? '';
+  if (shellPath.includes('fish')) return 'fish';
+  if (shellPath.includes('zsh')) return 'zsh';
+  return 'bash';
 }
 
 function defaultHistoryFile(shell: Shell): string {
   const home = homedir();
-  return shell === 'zsh' ? join(home, '.zsh_history') : join(home, '.bash_history');
+  switch (shell) {
+    case 'zsh':
+      return join(home, '.zsh_history');
+    case 'fish':
+      return join(home, '.local', 'share', 'fish', 'fish_history');
+    default:
+      return join(home, '.bash_history');
+  }
 }
 
 function printHelp(): void {
@@ -36,8 +46,9 @@ Usage:
   topcmd [options]
 
 Options:
-  --shell <bash|zsh>   history format to parse (default: guessed from $SHELL)
-  --file <path>        history file to read (default: ~/.bash_history or ~/.zsh_history)
+  --shell <bash|zsh|fish>   history format to parse (default: guessed from $SHELL)
+  --file <path>        history file to read (default: ~/.bash_history, ~/.zsh_history,
+                        or ~/.local/share/fish/fish_history)
   --limit <n>          how many commands to show (default: 20)
   --since <when>       only count commands run at or after this time
   --until <when>       only count commands run at or before this time
@@ -101,8 +112,8 @@ function parseArgs(argv: string[]): Options {
         break;
       case '--shell': {
         const value = argv[++i];
-        if (value !== 'bash' && value !== 'zsh') {
-          throw new Error(`--shell must be "bash" or "zsh", got "${value}"`);
+        if (value !== 'bash' && value !== 'zsh' && value !== 'fish') {
+          throw new Error(`--shell must be "bash", "zsh", or "fish", got "${value}"`);
         }
         options.shell = value;
         break;

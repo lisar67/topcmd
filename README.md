@@ -57,8 +57,8 @@ $ topcmd --limit 3 --json
 
 | Flag             | Meaning                                                            |
 |------------------|---------------------------------------------------------------------|
-| `--shell <name>` | `bash` or `zsh`; guessed from `$SHELL` if not given                 |
-| `--file <path>`  | history file to read (default `~/.bash_history` or `~/.zsh_history`)|
+| `--shell <name>` | `bash`, `zsh`, or `fish`; guessed from `$SHELL` if not given         |
+| `--file <path>`  | history file to read (default `~/.bash_history`, `~/.zsh_history`, or `~/.local/share/fish/fish_history`) |
 | `--limit <n>`    | how many commands to show (default 20)                              |
 | `--since <when>` | only count commands run at or after this time                       |
 | `--until <when>` | only count commands run at or before this time                      |
@@ -81,6 +81,9 @@ range.
 - **bash** history is one command per line. If `HISTTIMEFORMAT` is set,
   each command is preceded by a `#<epoch-seconds>` line, which `topcmd`
   strips out and uses as the timestamp.
+- **fish** history is a YAML-like file of `- cmd:`/`when:`/`paths:` entries.
+  `topcmd` reads the command and timestamp out of each entry and unescapes
+  the backslash/newline escaping fish applies when writing it out.
 - The "base command" is the first token after any leading `VAR=value`
   environment assignments, with any directory prefix removed — so
   `FOO=1 /usr/bin/git commit` counts as `git`.
@@ -96,5 +99,5 @@ node dist/index.js
 
 ## Status
 
-Early. `--exclude` now lets you drop noisy commands from the ranking; fish
-history support and an hour-of-day view are still planned.
+Early. `--shell fish` now parses fish's history format; unit tests and an
+hour-of-day view are still planned.

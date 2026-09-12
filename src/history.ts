@@ -3,10 +3,12 @@ export interface HistoryEntry {
   timestamp: number | null;
 }
 
-export type Shell = 'bash' | 'zsh';
+export type Shell = 'bash' | 'zsh' | 'fish';
 
 export function parseHistory(content: string, shell: Shell): HistoryEntry[] {
-  return shell === 'zsh' ? parseZshHistory(content) : parseBashHistory(content);
+  if (shell === 'zsh') return parseZshHistory(content);
+  if (shell === 'fish') return parseFishHistory(content);
+  return parseBashHistory(content);
 }
 
 // zsh extended history: ": <start-epoch>:<elapsed-seconds>;<command>"
@@ -71,6 +73,68 @@ function parseBashHistory(content: string): HistoryEntry[] {
     }
     pendingTimestamp = null;
   }
+
+  return entries;
+}
+
+// fish history is a YAML-like format: each entry is a "- cmd:" line, an
+// optional "  when: <epoch>" line, and an optional "  paths:" block listing
+// files the command referenced (ignored here, we only want the command)
+const FISH_CMD_LINE = /^- cmd: (.*)$/;
+const FISH_WHEN_LINE = /^\s*when: (\d+)$/;
+
+// fish escapes backslashes and embedded newlines when writing a command to
+// the history file, so a multi-line command still lands on a single raw line
+function unescapeFishCommand(raw: string): string {
+  let result = '';
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '\\' && i + 1 < raw.length) {
+      const next = raw[i + 1];
+      if (next === 'n') {
+        result += '\n';
+        i++;
+        continue;
+      }
+      if (next === '\\') {
+        result += '\\';
+        i++;
+        continue;
+      }
+    }
+    result += raw[i];
+  }
+  return result;
+}
+
+function parseFishHistory(content: string): HistoryEntry[] {
+  const entries: HistoryEntry[] = [];
+  const lines = content.split('\n');
+
+  let pendingCommand: string | null = null;
+  let pendingTimestamp: number | null = null;
+
+  const flush = () => {
+    if (pendingCommand === null) return;
+    if (pendingCommand.length > 0) {
+      entries.push({ command: pendingCommand, timestamp: pendingTimestamp });
+    }
+    pendingCommand = null;
+    pendingTimestamp = null;
+  };
+
+  for (const rawLine of lines) {
+    const cmdMatch = FISH_CMD_LINE.exec(rawLine);
+    if (cmdMatch) {
+      flush();
+      pendingCommand = unescapeFishCommand(cmdMatch[1]);
+      continue;
+    }
+    if (pendingCommand !== null) {
+      const whenMatch = FISH_WHEN_LINE.exec(rawLine);
+      if (whenMatch) pendingTimestamp = Number(whenMatch[1]);
+    }
+  }
+  flush();
 
   return entries;
 }

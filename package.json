@@ -1,7 +1,7 @@
 {
   "name": "topcmd",
   "version": "0.1.0",
-  "description": "Find your most-used shell commands from bash or zsh history",
+  "description": "Find your most-used shell commands from bash, zsh, or fish history",
   "type": "module",
   "bin": {
     "topcmd": "./dist/index.js"

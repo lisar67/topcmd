@@ -97,7 +97,13 @@ npm run build   # runs tsc, writes dist/
 node dist/index.js
 ```
 
+Tests use the built-in `node:test` runner, no test framework installed:
+
+```
+npm test        # runs tsc, then node --test against dist/
+```
+
 ## Status
 
-Early. `--shell fish` now parses fish's history format; unit tests and an
-hour-of-day view are still planned.
+Early. `--shell fish` now parses fish's history format and `src/history.ts`
+has unit test coverage; an hour-of-day view is still planned.

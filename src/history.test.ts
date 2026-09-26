@@ -1,6 +1,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHistory, baseCommand, filterByTimeRange } from './history.js';
+import { parseHistory, baseCommand, filterByTimeRange, countByHour } from './history.js';
+
+// builds an epoch-seconds timestamp for a given local hour, so tests don't
+// depend on the timezone of the machine running them
+function atLocalHour(hour: number): number {
+  return Math.floor(new Date(2024, 0, 1, hour, 0, 0).getTime() / 1000);
+}
 
 describe('parseHistory bash', () => {
   test('splits one command per line and skips blank lines', () => {
@@ -135,6 +141,42 @@ describe('baseCommand', () => {
 
   test('returns an empty string when the line is only environment assignments', () => {
     assert.equal(baseCommand('FOO=bar'), '');
+  });
+});
+
+describe('countByHour', () => {
+  test('buckets timestamped entries by their local hour of day', () => {
+    const entries = [
+      { command: 'a', timestamp: atLocalHour(9) },
+      { command: 'b', timestamp: atLocalHour(9) },
+      { command: 'c', timestamp: atLocalHour(14) },
+    ];
+    const result = countByHour(entries);
+    assert.equal(result.hours[9], 2);
+    assert.equal(result.hours[14], 1);
+    assert.equal(result.counted, 3);
+    assert.equal(result.skipped, 0);
+  });
+
+  test('counts entries with no timestamp as skipped, not hour zero', () => {
+    const entries = [
+      { command: 'a', timestamp: atLocalHour(0) },
+      { command: 'b', timestamp: null },
+    ];
+    const result = countByHour(entries);
+    assert.equal(result.hours[0], 1);
+    assert.equal(result.counted, 1);
+    assert.equal(result.skipped, 1);
+  });
+
+  test('returns all-zero hours for an empty list', () => {
+    const result = countByHour([]);
+    assert.deepEqual(
+      result.hours,
+      new Array(24).fill(0),
+    );
+    assert.equal(result.counted, 0);
+    assert.equal(result.skipped, 0);
   });
 });
 

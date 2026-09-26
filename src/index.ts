@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { parseHistory, baseCommand, filterByTimeRange, type Shell } from './history.js';
+import { parseHistory, baseCommand, filterByTimeRange, countByHour, type Shell, type HourCounts } from './history.js';
 
 interface Options {
   shell: Shell;
@@ -12,6 +12,7 @@ interface Options {
   since: number | null;
   until: number | null;
   exclude: Set<string>;
+  byHour: boolean;
 }
 
 interface RankedCommand {
@@ -54,6 +55,8 @@ Options:
   --until <when>       only count commands run at or before this time
   --exclude <names>    comma-separated base commands to leave out of the
                         ranking (repeatable); e.g. --exclude cd,ls
+  --by-hour            show a count of commands run per hour of day (0-23,
+                        local time) instead of ranking by command name
   --json               print results as JSON instead of a table
   -h, --help           show this help text
 
@@ -69,6 +72,7 @@ Examples:
   topcmd --since 7d
   topcmd --since 2024-01-01 --until 2024-02-01
   topcmd --exclude cd,ls,clear
+  topcmd --by-hour
 `);
 }
 
@@ -102,6 +106,7 @@ function parseArgs(argv: string[]): Options {
     since: null,
     until: null,
     exclude: new Set(),
+    byHour: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -109,6 +114,9 @@ function parseArgs(argv: string[]): Options {
     switch (arg) {
       case '--json':
         options.json = true;
+        break;
+      case '--by-hour':
+        options.byHour = true;
         break;
       case '--shell': {
         const value = argv[++i];
@@ -210,6 +218,24 @@ function printTable(ranked: RankedCommand[], totalEntries: number): void {
   console.log(`\n${totalEntries} total commands in history`);
 }
 
+function printByHour(counts: HourCounts): void {
+  if (counts.counted === 0) {
+    console.log('no timestamped history entries found');
+    return;
+  }
+
+  const max = Math.max(...counts.hours);
+  const barWidth = 40;
+  for (let hour = 0; hour < 24; hour++) {
+    const count = counts.hours[hour];
+    const barLength = max === 0 ? 0 : Math.round((count / max) * barWidth);
+    console.log(`${String(hour).padStart(2, '0')}:00  ${String(count).padStart(5)}  ${'#'.repeat(barLength)}`);
+  }
+
+  const skippedNote = counts.skipped > 0 ? `, ${counts.skipped} skipped (no timestamp)` : '';
+  console.log(`\n${counts.counted} timestamped commands${skippedNote}`);
+}
+
 function run(): void {
   const options = parseArgs(process.argv.slice(2));
   if (options.since !== null && options.until !== null && options.since > options.until) {
@@ -220,6 +246,31 @@ function run(): void {
   const content = readFileSync(file, { encoding: 'utf8' });
   const allEntries = parseHistory(content, options.shell);
   const entries = filterByTimeRange(allEntries, options.since, options.until);
+
+  if (options.byHour) {
+    const counts = countByHour(entries);
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            shell: options.shell,
+            file,
+            since: options.since,
+            until: options.until,
+            counted: counts.counted,
+            skipped: counts.skipped,
+            hours: counts.hours.map((count, hour) => ({ hour, count })),
+          },
+          null,
+          2,
+        ),
+      );
+    } else {
+      printByHour(counts);
+    }
+    return;
+  }
+
   const { ranked, total } = rankCommands(entries, options.limit, options.exclude);
 
   if (options.json) {

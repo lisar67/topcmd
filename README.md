@@ -21,6 +21,7 @@ topcmd --file ./old_bash_history --json
 topcmd --since 7d
 topcmd --since 2024-01-01 --until 2024-02-01
 topcmd --exclude cd,ls,clear
+topcmd --by-hour
 ```
 
 Human-readable output:
@@ -35,6 +36,22 @@ COUNT   PCT   COMMAND
   204   4.5%   docker
 
 4576 total commands in history
+```
+
+`--by-hour` swaps the ranking for a count of commands run per hour of day
+(local time), to answer "when do I actually work" instead of "what do I
+run":
+
+```
+$ topcmd --by-hour
+00:00      3
+...
+09:00    204  ################
+10:00    398  ################################
+...
+23:00     12  #
+
+4238 timestamped commands, 338 skipped (no timestamp)
 ```
 
 JSON output (same data, for scripts):
@@ -63,6 +80,7 @@ $ topcmd --limit 3 --json
 | `--since <when>` | only count commands run at or after this time                       |
 | `--until <when>` | only count commands run at or before this time                      |
 | `--exclude <names>` | comma-separated base commands to leave out of the ranking (repeatable) |
+| `--by-hour`      | show commands run per hour of day (local time) instead of ranking by name |
 | `--json`         | print a JSON object instead of a table                              |
 | `-h`, `--help`   | usage text                                                           |
 
@@ -105,5 +123,5 @@ npm test        # runs tsc, then node --test against dist/
 
 ## Status
 
-Early. `--shell fish` now parses fish's history format and `src/history.ts`
-has unit test coverage; an hour-of-day view is still planned.
+Early. `--shell fish` now parses fish's history format, `src/history.ts`
+has unit test coverage, and `--by-hour` gives an hour-of-day view.

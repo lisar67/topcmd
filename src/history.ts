@@ -155,6 +155,28 @@ export function filterByTimeRange(
   });
 }
 
+export interface HourCounts {
+  hours: number[]; // length 24, index = hour of day in local time (0-23)
+  counted: number; // entries that had a timestamp and were counted
+  skipped: number; // entries with no timestamp, left out for the same
+  // reason filterByTimeRange drops them: there's no hour to put them in
+}
+
+export function countByHour(entries: HistoryEntry[]): HourCounts {
+  const hours = new Array(24).fill(0);
+  let counted = 0;
+  let skipped = 0;
+  for (const entry of entries) {
+    if (entry.timestamp === null) {
+      skipped++;
+      continue;
+    }
+    hours[new Date(entry.timestamp * 1000).getHours()]++;
+    counted++;
+  }
+  return { hours, counted, skipped };
+}
+
 // reduces a full command line to the program that was actually invoked:
 // drops leading env assignments (FOO=bar mycommand ...) and any directory
 // prefix, so "/usr/bin/git status" and "git log" both count as "git"
